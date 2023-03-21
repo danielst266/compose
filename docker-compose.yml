@@ -1,14 +1,31 @@
 version: '3.7'
 services:
-  mongodb:
+  mongo:
     image: mongo
+    hostname: mongo
     restart: always
     volumes:
-      - data_volume:/data/db
+      - data_volume:/data/db2
     ports:
       - "27017:27017"
 
+  nominatim:
+    container_name: nominatim
+    image: mediagis/nominatim:4.2
+    restart: always
+    ports:
+        - "8085:8080"
+    environment:
+        # see https://github.com/mediagis/nominatim-docker/tree/master/4.1#configuration for more options
+        PBF_PATH: /nominatim/data/sweden-latest.osm.pbf
+        NOMINATIM_PASSWORD: very_secure_password
+    volumes:
+        - nominatim-mapdata:/var/lib/postgresql/14/main
+        - nominatim-data:/nominatim/data
+    shm_size: 1gb
+
   java_backend:
+    container_name: java
     build:
       context: /home/daniel/myApp/javaBackend
       dockerfile: /home/daniel/myApp/javaBackend/Dockerfile
@@ -16,7 +33,21 @@ services:
       - "8080:8080"
       - "8090:8090"
     depends_on:
-      - mongodb
+      - mongo
+      - csh_scraper
+      - nominatim
+        
+  csh_scraper:
+    build:
+      context: /home/daniel/myApp/scraperBackend
+      dockerfile: /home/daniel/myApp/scraperBackend/Dockerfile
+    ports:
+      - "5000:5000"
+
+  
 
 volumes:
   data_volume:
+  nominatim-mapdata:
+  nominatim-data:
+    external: true
